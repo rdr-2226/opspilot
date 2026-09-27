@@ -1,0 +1,7 @@
+# Local profile: runs without Docker or PostgreSQL.
+# Data is saved in ./data/opspilot.mv.db so it survives restarts.
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/opspilot;MODE=PostgreSQL;AUTO_SERVER=TRUE
+    username: sa
+    password: ""

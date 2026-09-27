@@ -1,0 +1,14 @@
+# Test configuration: in-memory H2 instead of PostgreSQL, so `mvn test` needs no database.
+spring:
+  datasource:
+    url: jdbc:h2:mem:opspilot;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+opspilot:
+  agent:
+    model: gemini-2.5-flash

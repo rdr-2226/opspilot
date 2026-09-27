@@ -1,0 +1,14 @@
+2026-09-27T09:58:07.000Z INFO  [payment-service] Started PaymentServiceApplication in 6.2 seconds
+2026-09-27T09:58:14.000Z INFO  [payment-service] HikariPool-1 - Start completed. maximumPoolSize=10
+2026-09-27T09:58:21.000Z INFO  [payment-service] POST /api/payments 201 in 84ms
+2026-09-27T09:58:28.000Z INFO  [payment-service] POST /api/payments 201 in 91ms
+2026-09-27T09:58:58.000Z INFO  [payment-service] Traffic spike detected: 420 req/s (baseline 120 req/s)
+2026-09-27T09:59:03.000Z WARN  [payment-service] HikariPool-1 - Connection is not available, request timed out after 30000ms. active=10, idle=0, waiting=37
+2026-09-27T09:59:06.000Z WARN  [payment-service] Slow query detected: SELECT * FROM payments WHERE merchant_id=? took 12840ms (no index on merchant_id)
+2026-09-27T09:59:10.000Z ERROR [payment-service] POST /api/payments 500 - org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection
+2026-09-27T09:59:12.000Z ERROR [payment-service] HikariPool-1 - Connection is not available, request timed out after 30000ms. active=10, idle=0, waiting=58
+2026-09-27T09:59:14.000Z WARN  [payment-service] Slow query detected: SELECT * FROM payments WHERE merchant_id=? took 13310ms (no index on merchant_id)
+2026-09-27T09:59:16.000Z ERROR [payment-service] POST /api/payments 500 - org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection
+2026-09-27T09:59:19.000Z ERROR [payment-service] Circuit breaker 'paymentsDb' OPEN after 50% failure rate
+2026-09-27T09:59:24.000Z ERROR [payment-service] POST /api/payments 503 - Service Unavailable (circuit open)
+2026-09-27T09:59:30.000Z WARN  [payment-service] Readiness probe failed: HTTP 503

@@ -1,0 +1,7 @@
+2026-09-27T09:58:07.000Z INFO  [auth-service] Started AuthServiceApplication in 4.1 seconds
+2026-09-27T09:58:14.000Z INFO  [auth-service] POST /oauth/token 200 in 35ms
+2026-09-27T09:59:14.000Z WARN  [auth-service] TLS certificate for idp.internal.example expires in 0 days
+2026-09-27T09:59:54.000Z ERROR [auth-service] SSLHandshakeException: PKIX path validation failed: certificate expired on 2026-09-27T10:00:00Z (host idp.internal.example)
+2026-09-27T09:59:57.000Z ERROR [auth-service] POST /oauth/token 502 - upstream identity provider unreachable
+2026-09-27T10:00:00.000Z ERROR [auth-service] SSLHandshakeException: PKIX path validation failed: certificate expired (host idp.internal.example)
+2026-09-27T10:00:04.000Z WARN  [auth-service] Login failure rate 96% over last 5 minutes

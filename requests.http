@@ -1,0 +1,38 @@
+### Demo requests. IntelliJ / VS Code (REST Client extension) can run these directly.
+
+### 1. Create an incident
+POST http://localhost:8080/api/incidents
+Content-Type: application/json
+
+{
+  "title": "Checkout payments failing with 500 errors",
+  "serviceName": "payment-service",
+  "description": "Customers cannot pay since about 10:00. Error rate above 40%.",
+  "severity": "CRITICAL"
+}
+
+### 2. Run the AI agents on incident 1
+POST http://localhost:8080/api/incidents/1/triage
+
+### 3. Human approves the proposed fix
+POST http://localhost:8080/api/incidents/1/approve
+Content-Type: application/json
+
+{ "reviewer": "divakar", "comment": "Plan looks right, adding the index first." }
+
+### 4. Mark it resolved
+POST http://localhost:8080/api/incidents/1/resolve
+
+### 5. List incidents waiting for approval
+GET http://localhost:8080/api/incidents?status=PENDING_APPROVAL
+
+### Other demo services: order-service (OOMKilled), auth-service (expired TLS certificate)
+POST http://localhost:8080/api/incidents
+Content-Type: application/json
+
+{
+  "title": "Order service keeps restarting",
+  "serviceName": "order-service",
+  "description": "Pods in CrashLoopBackOff every night around 10:00",
+  "severity": "HIGH"
+}

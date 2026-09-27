@@ -1,0 +1,11 @@
+2026-09-27T09:58:07.000Z INFO  [order-service] Started OrderServiceApplication in 8.9 seconds
+2026-09-27T09:58:14.000Z INFO  [order-service] JVM heap max=512MB, container memory limit=768Mi
+2026-09-27T09:58:21.000Z INFO  [order-service] Nightly report job started: exporting 2,400,000 orders
+2026-09-27T09:58:41.000Z WARN  [order-service] Heap usage 81% (415MB/512MB) after GC
+2026-09-27T09:59:01.000Z WARN  [order-service] Heap usage 93% (476MB/512MB) after GC, GC pause 1.8s
+2026-09-27T09:59:11.000Z WARN  [order-service] GC overhead: 72% of time spent in GC over last 60s
+2026-09-27T09:59:16.000Z ERROR [order-service] java.lang.OutOfMemoryError: Java heap space at com.shop.report.OrderExporter.loadAll(OrderExporter.java:88)
+2026-09-27T09:59:18.000Z ERROR [order-service] Nightly report job failed: OutOfMemoryError
+2026-09-27T09:59:21.000Z ERROR [order-service] Container order-service terminated: reason=OOMKilled exitCode=137 restartCount=4
+2026-09-27T09:59:41.000Z INFO  [order-service] Started OrderServiceApplication in 9.1 seconds
+2026-09-27T09:59:46.000Z WARN  [order-service] Pod order-service-7d9f8 in CrashLoopBackOff, back-off 2m40s
