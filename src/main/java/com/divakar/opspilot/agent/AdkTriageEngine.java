@@ -12,6 +12,7 @@ import com.google.genai.types.Part;
 import com.google.genai.types.Schema;
 import java.util.List;
 import java.util.Map;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
@@ -41,16 +42,18 @@ public class AdkTriageEngine implements TriageEngine {
     static final String APP_NAME = "opspilot";
     private static final String USER_ID = "opspilot-api";
     private static final String FIX_PLANNER = "FixPlanner";
-    /** Max seconds to wait between two events from the pipeline. */
-    private static final long TIMEOUT_SECONDS = 90;
+    /** Max seconds to wait between two events from the pipeline (configurable). */
+    private final long timeoutSeconds;
     /** Total tries for temporary errors (1 first try + 3 retries). */
     private static final int MAX_ATTEMPTS = 4;
 
     private final InMemoryRunner runner;
 
-    public AdkTriageEngine(@Value("${opspilot.agent.model}") String model) {
+    public AdkTriageEngine(@Value("${opspilot.agent.model}") String model,
+                           @Value("${opspilot.agent.timeout-seconds:180}") long timeoutSeconds) {
         this.runner = new InMemoryRunner(buildPipeline(model), APP_NAME);
-        log.info("ADK triage pipeline ready (model={})", model);
+        this.timeoutSeconds = timeoutSeconds;
+        log.info("ADK triage pipeline ready (model={}, timeout={}s)", model, timeoutSeconds);
     }
 
     static SequentialAgent buildPipeline(String model) {
@@ -186,8 +189,11 @@ public class AdkTriageEngine implements TriageEngine {
         AtomicReference<String> plan = new AtomicReference<>();
         log.info("[incident {}] triage started (model call in progress...)", incident.getId());
         runner.runAsync(USER_ID, session.id(), userMessage)
+                // Run the pipeline on a background I/O thread. Without this, a blocking model call
+                // would run on THIS thread and block it, so the timeout below could never fire.
+                .subscribeOn(Schedulers.io())
                 // Fail instead of hanging forever if the model or network stops responding.
-                .timeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .timeout(timeoutSeconds, TimeUnit.SECONDS)
                 .blockingForEach((Event event) -> {
                     if (event.finalResponse()) {
                         log.info("[incident {}] {} finished: {}", incident.getId(), event.author(),

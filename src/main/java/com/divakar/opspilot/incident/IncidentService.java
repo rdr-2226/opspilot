@@ -47,23 +47,42 @@ public class IncidentService {
 
     /**
      * Runs the AI agents and stores their proposal. The incident then waits for a human.
+     *
+     * Concurrency: the incident is first "claimed" with an atomic UPDATE (-> TRIAGING), so two
+     * simultaneous requests can never triage the same incident twice. If the AI fails, the claim
+     * is released and the incident returns to its previous status.
+     *
      * Deliberately not @Transactional: the LLM call can take many seconds and we don't want
-     * to hold a database transaction open during it.
+     * to hold a database transaction (and connection) open during it.
      */
     public Incident triage(Long id) {
         Incident incident = get(id);
+        IncidentStatus previous = incident.getStatus();
         requireStatus(incident, Set.of(IncidentStatus.OPEN, IncidentStatus.REJECTED), "triage");
 
-        TriageResult result = triageEngine.triage(incident);
+        if (repository.transition(id, previous, IncidentStatus.TRIAGING) == 0) {
+            throw new IllegalStateException("Incident " + id
+                    + " is already being triaged or was changed by another request");
+        }
+        incident.setStatus(IncidentStatus.TRIAGING);
 
-        incident.setRootCause(result.rootCause());
-        incident.setSuggestedFix(String.join("\n", result.fixSteps()));
-        incident.setConfidence(result.confidence());
-        incident.setRunbookUsed(result.runbookUsed());
-        incident.setReviewedBy(null);
-        incident.setReviewComment(null);
-        incident.setStatus(IncidentStatus.PENDING_APPROVAL);
-        return repository.save(incident);
+        TriageResult result;
+        try {
+            result = triageEngine.triage(incident);
+        } catch (RuntimeException e) {
+            repository.transition(id, IncidentStatus.TRIAGING, previous); // release the claim
+            throw e;
+        }
+
+        Incident fresh = get(id);
+        fresh.setRootCause(result.rootCause());
+        fresh.setSuggestedFix(String.join("\n", result.fixSteps()));
+        fresh.setConfidence(result.confidence());
+        fresh.setRunbookUsed(result.runbookUsed());
+        fresh.setReviewedBy(null);
+        fresh.setReviewComment(null);
+        fresh.setStatus(IncidentStatus.PENDING_APPROVAL);
+        return repository.save(fresh);
     }
 
     /** Human-in-the-loop: nothing the AI proposes is acted on until a person approves it. */

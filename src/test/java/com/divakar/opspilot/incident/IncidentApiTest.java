@@ -140,6 +140,30 @@ class IncidentApiTest {
     }
 
     @Test
+    void incidentAlreadyBeingTriagedReturns409() throws Exception {
+        long id = createIncident();
+        // Simulate another request that has already claimed this incident.
+        repository.transition(id, IncidentStatus.OPEN, IncidentStatus.TRIAGING);
+
+        mvc.perform(post("/api/incidents/{id}/triage", id)).andExpect(status().isConflict());
+        verify(triageEngine, never()).triage(any());
+    }
+
+    @Test
+    void failedTriageReturnsRejectedIncidentToRejected() throws Exception {
+        when(triageEngine.triage(any()))
+                .thenReturn(new TriageResult("Guess", List.of("Restart"), 0.3, "none"))
+                .thenThrow(new TriageException("model timeout"));
+        long id = createIncident();
+        mvc.perform(post("/api/incidents/{id}/triage", id)).andExpect(status().isOk());
+        mvc.perform(post("/api/incidents/{id}/reject", id).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reviewer\": \"divakar\"}"));
+
+        mvc.perform(post("/api/incidents/{id}/triage", id)).andExpect(status().isBadGateway());
+        mvc.perform(get("/api/incidents/{id}", id)).andExpect(jsonPath("$.status").value("REJECTED"));
+    }
+
+    @Test
     void unknownIncidentReturns404() throws Exception {
         mvc.perform(get("/api/incidents/{id}", 999_999)).andExpect(status().isNotFound());
     }

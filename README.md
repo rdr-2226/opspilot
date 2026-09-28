@@ -43,6 +43,9 @@ flowchart LR
 - **Testable AI:** the AI sits behind a `TriageEngine` interface, so API tests mock it and run offline with no API key.
 - **No long DB transactions:** the slow LLM call runs outside a transaction.
 
+## Web console
+Open **http://localhost:8080** for the incident console: create incidents, run the AI triage, and **approve or reject** the proposed fix with one click. It is a single static page (`src/main/resources/static/index.html`) served by Spring Boot that calls the REST API below. All AI text is rendered as plain text (no `innerHTML`), so model output can't inject scripts.
+
 ## API
 | Method | Path | Purpose |
 |---|---|---|

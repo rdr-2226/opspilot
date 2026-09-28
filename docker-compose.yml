@@ -23,8 +23,8 @@ services:
         condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/opspilot
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      OPSPILOT_MODEL: ${OPSPILOT_MODEL:-gemini-2.5-flash}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?Set GOOGLE_API_KEY in .env}
+      OPSPILOT_MODEL: ${OPSPILOT_MODEL:?Set OPSPILOT_MODEL in .env}
     ports:
       - "8080:8080"
 

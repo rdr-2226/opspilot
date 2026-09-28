@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpsPilot – Incident Console</title>
+<style>
+  :root {
+    --bg: #f5f7fa; --panel: #ffffff; --text: #1c2430; --muted: #5f6b7a; --border: #dde3ea;
+    --accent: #2563eb; --accent-text: #ffffff;
+    --ok: #15803d; --ok-bg: #dcfce7; --warn: #b45309; --warn-bg: #fef3c7;
+    --bad: #b91c1c; --bad-bg: #fee2e2; --info: #1d4ed8; --info-bg: #dbeafe;
+    --grey-bg: #eef1f5; --purple: #6d28d9; --purple-bg: #ede9fe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f141a; --panel: #171e27; --text: #e6ebf1; --muted: #93a1b1; --border: #2a3441;
+      --accent: #3b82f6; --ok: #4ade80; --ok-bg: #12301f; --warn: #fbbf24; --warn-bg: #3a2c0c;
+      --bad: #f87171; --bad-bg: #3b1515; --info: #93c5fd; --info-bg: #172a4a; --grey-bg: #222b36;
+      --purple: #c4b5fd; --purple-bg: #2a1f4a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px;
+           background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header .spacer { flex: 1; }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 24px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px; border-bottom: 1px solid var(--border); }
+  .chip { border: 1px solid var(--border); background: transparent; color: var(--text);
+          padding: 4px 10px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+  .chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .list { max-height: calc(100vh - 190px); overflow-y: auto; }
+  .item { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .item:hover { background: var(--grey-bg); }
+  .item.selected { background: var(--info-bg); }
+  .item .title { font-weight: 600; }
+  .item .meta { color: var(--muted); font-size: 13px; display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .s-OPEN { background: var(--grey-bg); color: var(--muted); }
+  .s-TRIAGING { background: var(--purple-bg); color: var(--purple); }
+  .s-PENDING_APPROVAL { background: var(--warn-bg); color: var(--warn); }
+  .s-APPROVED { background: var(--info-bg); color: var(--info); }
+  .s-REJECTED { background: var(--bad-bg); color: var(--bad); }
+  .s-RESOLVED { background: var(--ok-bg); color: var(--ok); }
+  .sev-CRITICAL { color: var(--bad); font-weight: 700; } .sev-HIGH { color: var(--warn); font-weight: 600; }
+  .detail { padding: 20px 24px; min-height: 300px; }
+  .detail h2 { margin: 0 0 6px; font-size: 20px; }
+  .detail .meta { color: var(--muted); font-size: 14px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .section { margin-top: 20px; }
+  .section h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .ai-card { border-left: 4px solid var(--purple); }
+  ol.steps { margin: 6px 0 0; padding-left: 22px; } ol.steps li { margin: 4px 0; }
+  .conf { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 14px; }
+  .bar { flex: 0 0 160px; height: 8px; background: var(--grey-bg); border-radius: 4px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--purple); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  button.btn { border: 1px solid transparent; border-radius: 8px; padding: 8px 16px; font-size: 14px;
+               font-weight: 600; cursor: pointer; }
+  button.btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: var(--accent-text); }
+  .btn-approve { background: var(--ok); color: #fff; }
+  .btn-reject { background: transparent; color: var(--bad); border-color: var(--bad) !important; }
+  .btn-ghost { background: transparent; color: var(--text); border-color: var(--border) !important; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+                            background: var(--bg); color: var(--text); font: inherit; }
+  label { font-size: 13px; color: var(--muted); display: block; margin: 10px 0 4px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--purple-bg); border-top-color: var(--purple);
+             border-radius: 50%; display: inline-block; animation: spin 1s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 20px; right: 20px; max-width: 420px; padding: 12px 16px; border-radius: 8px;
+           background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); display: none; z-index: 10; }
+  .toast.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+  dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text);
+           width: min(520px, calc(100vw - 32px)); padding: 20px 24px; }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  .review-note { color: var(--muted); font-size: 14px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>OpsPilot</h1>
+    <div class="sub">AI incident triage · human approval</div>
+  </div>
+  <div class="spacer"></div>
+  <label style="margin:0">Reviewer
+    <input id="reviewer" placeholder="your name" style="width:160px; display:inline-block; margin-left:6px">
+  </label>
+  <button class="btn btn-primary" id="newBtn">+ New incident</button>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="filters" id="filters"></div>
+    <div class="list" id="list"><div class="empty">Loading…</div></div>
+  </section>
+  <section class="panel detail" id="detail">
+    <div class="empty">Select an incident to see details.</div>
+  </section>
+</main>
+
+<dialog id="newDialog">
+  <h2 style="margin-top:0">New incident</h2>
+  <form id="newForm">
+    <label for="f-title">Title</label>
+    <input id="f-title" required maxlength="200" placeholder="Checkout payments failing with 500 errors">
+    <div class="row">
+      <div>
+        <label for="f-service">Service</label>
+        <input id="f-service" required list="services" pattern="[a-z0-9-]{2,50}" placeholder="payment-service">
+        <datalist id="services">
+          <option value="payment-service"><option value="order-service"><option value="auth-service">
+        </datalist>
+      </div>
+      <div>
+        <label for="f-severity">Severity</label>
+        <select id="f-severity">
+          <option>CRITICAL</option><option selected>HIGH</option><option>MEDIUM</option><option>LOW</option>
+        </select>
+      </div>
+    </div>
+    <label for="f-desc">Description</label>
+    <textarea id="f-desc" rows="3" maxlength="4000" placeholder="What are users seeing?"></textarea>
+    <div class="actions" style="justify-content:flex-end">
+      <button type="button" class="btn btn-ghost" id="cancelNew">Cancel</button>
+      <button type="submit" class="btn btn-primary">Create</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// All model output is inserted with textContent (never innerHTML), so AI text can't inject HTML/JS (XSS).
+const STATUSES = ['ALL', 'PENDING_APPROVAL', 'OPEN', 'TRIAGING', 'APPROVED', 'REJECTED', 'RESOLVED'];
+const LABEL = { ALL: 'All', PENDING_APPROVAL: 'Needs approval', OPEN: 'Open', TRIAGING: 'Triaging',
+                APPROVED: 'Approved', REJECTED: 'Rejected', RESOLVED: 'Resolved' };
+let incidents = [], filter = 'PENDING_APPROVAL', selectedId = null, lastJson = '';
+const drafts = {};   // unsent review comments per incident, kept across refreshes
+const busy = new Set();   // incident ids with a request in flight from this browser
+
+const $ = (id) => document.getElementById(id);
+function el(tag, props = {}, ...children) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of children) if (c != null) n.append(c);
+  return n;
+}
+const badge = (s) => el('span', { class: 'badge s-' + s, text: LABEL[s] || s });
+
+function toast(msg, ok = false) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast' + (ok ? ' ok' : '');
+  t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 6000);
+}
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method, headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error((data && (data.detail || data.title)) || ('HTTP ' + res.status));
+  return data;
+}
+
+// Reviewer name is remembered in this browser only (convenience, not security).
+try { $('reviewer').value = localStorage.getItem('opspilot.reviewer') || ''; } catch (e) {}
+$('reviewer').addEventListener('change', () => {
+  try { localStorage.setItem('opspilot.reviewer', $('reviewer').value.trim()); } catch (e) {}
+});
+
+function renderFilters() {
+  const f = $('filters'); f.replaceChildren();
+  for (const s of STATUSES) {
+    const count = s === 'ALL' ? incidents.length : incidents.filter(i => i.status === s).length;
+    f.append(el('button', { class: 'chip' + (filter === s ? ' active' : ''), text: `${LABEL[s]} (${count})`,
+      onclick: () => { filter = s; render(); } }));
+  }
+}
+
+function renderList() {
+  const list = $('list'); list.replaceChildren();
+  const shown = incidents.filter(i => filter === 'ALL' || i.status === filter);
+  if (!shown.length) { list.append(el('div', { class: 'empty', text: 'No incidents here.' })); return; }
+  for (const i of shown) {
+    list.append(el('div', { class: 'item' + (i.id === selectedId ? ' selected' : ''),
+        onclick: () => { selectedId = i.id; render(); } },
+      el('div', { class: 'title', text: `#${i.id} ${i.title}` }),
+      el('div', { class: 'meta' }, badge(i.status),
+        el('span', { class: 'sev-' + i.severity, text: i.severity }),
+        el('span', { text: i.serviceName }),
+        i.status === 'TRIAGING' || busy.has(i.id) ? el('span', { class: 'spinner' }) : null)));
+  }
+}
+
+function renderDetail() {
+  const d = $('detail'); d.replaceChildren();
+  const i = incidents.find(x => x.id === selectedId);
+  if (!i) { d.append(el('div', { class: 'empty', text: 'Select an incident to see details.' })); return; }
+
+  d.append(el('h2', { text: `#${i.id} ${i.title}` }),
+    el('div', { class: 'meta' }, badge(i.status), el('span', { class: 'sev-' + i.severity, text: i.severity }),
+      el('span', { text: 'Service: ' + i.serviceName }),
+      el('span', { text: 'Created: ' + new Date(i.createdAt).toLocaleString() })));
+
+  if (i.description) d.append(el('div', { class: 'section' }, el('h3', { text: 'Description' }),
+    el('div', { text: i.description })));
+
+  const isBusy = busy.has(i.id) || i.status === 'TRIAGING';
+
+  // AI analysis
+  if (i.rootCause) {
+    const pct = Math.round((i.confidence || 0) * 100);
+    const steps = el('ol', { class: 'steps' }); (i.suggestedFix || []).forEach(s => steps.append(el('li', { text: s })));
+    d.append(el('div', { class: 'section' }, el('h3', { text: 'AI analysis' }),
+      el('div', { class: 'card ai-card' },
+        el('div', {}, el('strong', { text: 'Root cause: ' }), document.createTextNode(i.rootCause)),
+        el('div', { style: 'margin-top:10px' }, el('strong', { text: 'Suggested fix:' })), steps,
+        el('div', { class: 'conf' }, el('span', { text: 'AI confidence' }),
+          el('div', { class: 'bar' }, el('div', { style: `width:${pct}%` })), el('span', { text: pct + '%' })),
+        el('div', { class: 'review-note', text: 'Runbook: ' + (i.runbookUsed || 'none') +
+          ' · AI confidence is self-reported by the model; always review the evidence.' }))));
+  }
+
+  // Actions by status
+  const actions = el('div', { class: 'actions' });
+  if (i.status === 'OPEN' || i.status === 'REJECTED') {
+    actions.append(el('button', { class: 'btn btn-primary', ...(isBusy ? { disabled: '' } : {}),
+      onclick: () => triage(i.id) }, isBusy ? el('span', { class: 'spinner' }) : null,
+      document.createTextNode(isBusy ? ' AI agents are working…' : (i.status === 'REJECTED' ? 'Re-run AI triage' : 'Run AI triage'))));
+  }
+  if (i.status === 'TRIAGING') {
+    actions.append(el('span', { class: 'review-note' }, el('span', { class: 'spinner' }),
+      document.createTextNode(' AI agents are analysing logs and runbooks… this can take a minute or two.')));
+  }
+  if (i.status === 'PENDING_APPROVAL') {
+    const comment = el('textarea', { id: 'comment', rows: '2', placeholder: 'Comment (optional)',
+      oninput: (e) => { drafts[i.id] = e.target.value; } });
+    comment.value = drafts[i.id] || '';
+    d.append(el('div', { class: 'section' }, el('h3', { text: 'Your decision' }), comment));
+    actions.append(
+      el('button', { class: 'btn btn-approve', onclick: () => review(i.id, 'approve') , text: '✓ Approve fix' }),
+      el('button', { class: 'btn btn-reject', onclick: () => review(i.id, 'reject'), text: '✕ Reject' }));
+  }
+  if (i.status === 'APPROVED') {
+    actions.append(el('button', { class: 'btn btn-approve', onclick: () => resolve(i.id), text: 'Mark resolved' }));
+  }
+  if (i.reviewedBy) {
+    d.append(el('div', { class: 'review-note',
+      text: `${i.status === 'REJECTED' ? 'Rejected' : 'Approved'} by ${i.reviewedBy}` + (i.reviewComment ? `: "${i.reviewComment}"` : '') }));
+  }
+  d.append(actions);
+}
+
+function render() { renderFilters(); renderList(); renderDetail(); }
+
+async function load(force = false) {
+  try {
+    const data = await api('GET', '/api/incidents');
+    const json = JSON.stringify(data);
+    if (!force && json === lastJson) return;          // nothing changed: don't re-render (keeps focus while typing)
+    lastJson = json; incidents = data; render();
+  }
+  catch (e) { toast('Could not load incidents: ' + e.message); }
+}
+
+async function triage(id) {
+  busy.add(id); render();
+  try { await api('POST', `/api/incidents/${id}/triage`); toast('AI triage finished. Please review.', true); }
+  catch (e) { toast('Triage failed: ' + e.message); }
+  finally { busy.delete(id); await load(true); }
+}
+
+async function review(id, action) {
+  const reviewer = $('reviewer').value.trim();
+  if (!reviewer) { toast('Enter your name in "Reviewer" (top right) first.'); $('reviewer').focus(); return; }
+  const comment = drafts[id] || '';
+  try { await api('POST', `/api/incidents/${id}/${action}`, { reviewer, comment });
+        delete drafts[id];
+        toast(action === 'approve' ? 'Fix approved.' : 'Rejected. You can re-run the triage.', true); }
+  catch (e) { toast(e.message); }
+  await load(true);
+}
+
+async function resolve(id) {
+  try { await api('POST', `/api/incidents/${id}/resolve`); toast('Incident resolved.', true); }
+  catch (e) { toast(e.message); }
+  await load(true);
+}
+
+// New incident dialog
+$('newBtn').onclick = () => $('newDialog').showModal();
+$('cancelNew').onclick = () => $('newDialog').close();
+$('newForm').onsubmit = async (ev) => {
+  ev.preventDefault();
+  try {
+    const created = await api('POST', '/api/incidents', {
+      title: $('f-title').value.trim(), serviceName: $('f-service').value.trim(),
+      severity: $('f-severity').value, description: $('f-desc').value.trim() });
+    $('newDialog').close(); $('newForm').reset();
+    filter = 'OPEN'; selectedId = created.id; await load(true);
+    toast('Incident created. Click "Run AI triage".', true);
+  } catch (e) { toast(e.message); }
+};
+
+load();
+setInterval(load, 5000);   // simple polling so status changes (e.g. TRIAGING -> PENDING_APPROVAL) appear
+</script>
+</body>
+</html>

@@ -23,6 +23,8 @@ opspilot:
   agent:
     # Any Gemini model your API key can use. The API key itself is read from GOOGLE_API_KEY.
     model: ${OPSPILOT_MODEL:gemini-3.5-flash-lite}
+    # Max seconds to wait for the next agent event before retrying.
+    timeout-seconds: ${OPSPILOT_TIMEOUT_SECONDS:180}
 
 logging:
   level:
